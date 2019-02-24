@@ -4,6 +4,8 @@ import android.Manifest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Build;
@@ -12,8 +14,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -23,17 +27,22 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     long mNow;
     Date mDate;
     SimpleDateFormat mFormat = new SimpleDateFormat("yyyyMMdd");
     TextView datetest;
+    ListView listview;
+    String inDate;
+    EditText inputDate;
     private long lastTimeBackPressed;
     Context mcontext = this;
     final String url = "http://172.20.10.6:8080/theaters";
@@ -44,7 +53,22 @@ public class MainActivity extends AppCompatActivity {
     private boolean isAccessFineLocation = false;
     private boolean isAccessCoarseLocation = false;
     private boolean isPermission = false;
+    private GPSInfo gps;
     ProgressBar progress;
+
+    public class list_item {
+        private String movies;
+        private String code;
+
+        public list_item(String movies, String code) {
+            this.movies = movies;
+            this.code = code;
+        }
+
+        public String getCode() {
+            return code;
+        }
+    }
     ArrayAdapter adapter;
 
     static final List<String> myList = new LinkedList<>();
@@ -54,14 +78,13 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         /*----Button 정의-----*/
         Button locationButton= (Button) findViewById(R.id.locationButton);
-        Button CGVButton = (Button) findViewById(R.id.CGVButton);
+        inputDate = (EditText)findViewById(R.id.inputDate);
         callPermission(); // GPS Permission 질의
         adapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, myList) ;
         progress = (ProgressBar) findViewById(R.id.progressBar);
-        ListView listview = (ListView) findViewById(R.id.movies) ;
+        listview = (ListView) findViewById(R.id.movies) ;
         listview.setAdapter(adapter) ;
         datetest = (TextView) findViewById(R.id.datetest);
-        datetest.setText(getTime());
 
         progress.setVisibility(View.INVISIBLE); // Progress bar가 일단 안보이게
         Toolbar toolbar = findViewById(R.id.toolbar);
@@ -69,6 +92,15 @@ public class MainActivity extends AppCompatActivity {
         /*---위치 조회 눌렀을 경우 위경도 GPS로 받아오고 주소로 변환하기---*/
         locationButton.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v) {
+                double latitude;
+                double longitude;
+                String inDate;
+                if(inputDate.getText().toString().equals("") || inputDate.length() != 8){
+                    Toast.makeText(MainActivity.this, "다시 입력해 주세요.", Toast.LENGTH_LONG).show();
+                    return;
+                } else {
+                    inDate = inputDate.getText().toString();
+                }
                 progress.setVisibility(View.VISIBLE);
                 adapter.clear();
                 String location="";
@@ -79,22 +111,21 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 else {
-                    Log.e("button","????");
+                            GPSInfo gps = new GPSInfo(MainActivity.this);
+                            // GPS 사용유무 가져오기
+                            if (gps.isGetLocation()) {
+                                // 위도, 경도 구하기
+                                latitude = gps.getLatitude();
+                                longitude = gps.getLongitude();
+                                location = ""+latitude+","+longitude;
+                                String address = getAddress(mcontext,latitude,longitude);
+                                datetest.setText(address+"\n주변 영화관 상영시간표("+inDate+")");
+                            }
+                }
                     /*-----통신을 위한 AsyncTask-----*/
-                    movieTask movietask = new movieTask("인천광역시");
+                    movieTask movietask = new movieTask(location,inDate);
                     movietask.execute();
                     Log.e("tag","execute");
-                }
-            }
-        });
-        /*---CGv 눌렀을 경우 해당 회차로 이동하기(임시)---*/
-        CGVButton.setOnClickListener(new View.OnClickListener(){
-            public void onClick(View v) {
-                Toast.makeText(getApplicationContext(), "웹 브라우저로 이동합니다.",
-                        Toast.LENGTH_SHORT).show();
-                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url2+"0198"+"&t=T&ymd="+getTime()+"src=&src_name="));
-                //0198이 영화관코드, 20190224가 해당하는 상영일자
-                startActivity(intent);
             }
         });
     } // onCreate 끝
@@ -156,9 +187,10 @@ public class MainActivity extends AppCompatActivity {
     // TODO : 서버로 request 보내고 받아온 response 정리하기 + 생성자 처리하기
     class movieTask extends AsyncTask<String, Integer, JSONObject> {
         String location;
-        String text;
-        public movieTask(String location) {
+        String date;
+        public movieTask(String location, String date) {
             this.location = location;
+            this.date = date;
         }
         /*----전처리----*/
         @Override
@@ -172,14 +204,15 @@ public class MainActivity extends AppCompatActivity {
             JSONObject result;
             JSONObject jsonObject = new JSONObject();
             try {
-                jsonObject.put("uuid", "hi"); // JSON 생성
+                jsonObject.put("location", location); // JSON 생성
+                jsonObject.put("date", date);
+                Log.e("json", jsonObject.toString());
             } catch (JSONException e) {
                 e.printStackTrace();
             }
             RequestHttpURLConnection requestHttpURLConnection = new RequestHttpURLConnection();
             result = requestHttpURLConnection.request(url, jsonObject, "POST");
             Log.e("Async", "Async");
-            //Log.e("result",result.toString());
             return result;
         }
         /*----통신의 결과값을 이용----*/
@@ -197,6 +230,7 @@ public class MainActivity extends AppCompatActivity {
             JSONObject movies3 = new JSONObject();
             JSONObject movies4 = new JSONObject();
             JSONObject movies5 = new JSONObject();
+            String code="";
             try {
                jsonArray = result.getJSONArray("result"); // 전체 JSONArray 가져오기
             }catch (JSONException e) {
@@ -205,22 +239,19 @@ public class MainActivity extends AppCompatActivity {
             for(int i = 0 ; i<jsonArray.length(); i++){
                 try {
                     movies = jsonArray.getJSONObject(i); // 영화관별로 가져오기
-                    //myList.add(movies.toString());
-                    Log.e("movies", movies.toString());
                 } catch (JSONException e) {
 
                 }
                 Iterator ii = movies.keys();
                 while (ii.hasNext()) {
                     String temp = ii.next().toString();
-                    Log.e("iter", temp); // 영화관명
                     try {
                         movies2 = movies.getJSONObject(temp); //영화관별 JSONObject
-                        Log.e("movies2", movies2.toString());
                     } catch (JSONException e) {
 
                     }
                     try {
+                        code = movies2.getString("TheaterCode"); // 영화관 코드
                         jsonArray2 = movies2.getJSONArray("timetable");
                     }catch (JSONException e) {
 
@@ -258,43 +289,27 @@ public class MainActivity extends AppCompatActivity {
                                     for(int l=0;l<jsonArray4.length();l++) {
                                         try {
                                             movies5 = jsonArray4.getJSONObject(l); // 마지막
-                                            myList.add(temp+" "+temp2+" "+" "+temp3+"\n시작시간 : "+movies5.getString("startTime")
-                                                    +"\n종료시간 : "+movies5.getString("endTime")+"\n여석 : "+movies5.getString("available"));
-                                        } catch(JSONException e) {
-
+                                            adapter.add(temp+" <"+temp2+"> "+" "+temp3+"\n시작시간 : "+movies5.getString("startTime")
+                                                    +"\n종료시간 : "+movies5.getString("endTime")+"\n여석 : "+movies5.getString("available") +"\n극장 코드 : "+code);
+                                            } catch(JSONException e) {
                                         }
-
                                     }
                                 }
                             }
                         }
                     }
                 }
-
-            /*try {
-                Iterator i = result.keys();
-                while(i.hasNext()) {
-                    String temp = i.next().toString();
-                    myList.add(temp);
-                    try {
-                        Log.e("json",temp);
-                        JSONArray jj = result.getJSONArray(temp);
-                        Iterator i2 = jj.;
-                        while(i2.hasNext()) {
-                            String temp2 = i.next().toString();
-                            myList.add(temp2);
-                            Log.e("json",temp2);
-                        }
-                    }catch(JSONException e) {
-
+                //adapter.addAll(myList);
+                listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                    @Override
+                    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                        Toast.makeText(getApplicationContext(), "웹 브라우저로 이동합니다.", Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url2
+                                +adapter.getItem(position).toString().substring(adapter.getItem(position).toString().length()-4)+"&t=T&ymd="
+                                +inputDate.getText().toString()+"src=&src_name="));
+                        startActivity(intent);
                     }
-                }*/
-                //text = "영화관 : "+result.getString("name") + "\n 코드 : " + result.getString("code") + "\n 영화제목 : " + result.getString("movie")
-                       // + "\n 상영관 : " + result.getString("theater") + "\n 시작시간 : " + result.getString("starttime") + "\n 종료시간 : " + result.getString("endtime");
-                //datetest.setText(result.toString());
-                //myList.add(result.toString());
-                //adapter.clear();
-                adapter.addAll(myList);
+                });
             }
         }
     }
@@ -303,5 +318,31 @@ public class MainActivity extends AppCompatActivity {
         mNow = System.currentTimeMillis();
         mDate = new Date(mNow);
         return mFormat.format(mDate);
+    }
+    /*---주소 읽어오기----*/
+    public static String getAddress(Context mContext, double lat, double lng) {
+        String nowAddress ="현재 위치를 확인 할 수 없습니다.";
+        Geocoder geocoder = new Geocoder(mContext, Locale.KOREA);
+        List<Address> address;
+        try {
+            if (geocoder != null) {
+                //세번째 파라미터는 좌표에 대해 주소를 리턴 받는 갯수로
+                //한좌표에 대해 두개이상의 이름이 존재할수있기에 주소배열을 리턴받기 위해 최대갯수 설정
+                address = geocoder.getFromLocation(lat, lng, 1);
+
+                if (address != null && address.size() > 0) {
+                    // 주소 받아오기
+                    String currentLocationAddress = address.get(0).getAddressLine(0).toString();
+                    nowAddress  = currentLocationAddress;
+
+                }
+            }
+
+        } catch (IOException e) {
+            Toast.makeText(mContext, "주소를 가져 올 수 없습니다.", Toast.LENGTH_LONG).show();
+
+            e.printStackTrace();
+        }
+        return nowAddress;
     }
 }

@@ -43,10 +43,11 @@ public class RequestHttpURLConnection {
             // [2-1]. urlConn 설정.
             urlConn.setRequestMethod(_method); // URL 요청에 대한 메소드 설정.
             urlConn.setRequestProperty("Accept", "application/json"); // Accept-Charset 설정.
-            urlConn.setRequestProperty("Context_Type", "application/json");
+            urlConn.setRequestProperty("Content-Type", "application/json");
 
             // [2-2]. parameter 전달 및 데이터 읽어오기.
             String strParams = sbParams.toString(); //sbParams에 정리한 파라미터들을 스트링으로 저장. 예)id=id1&pw=123;
+            Log.e("?", strParams);
             OutputStream os = urlConn.getOutputStream();
             os.write(strParams.getBytes("UTF-8")); // 출력 스트림에 출력.
             os.flush(); // 출력 스트림을 플러시(비운다)하고 버퍼링 된 모든 출력 바이트를 강제 실행.

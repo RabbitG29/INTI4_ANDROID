@@ -23,9 +23,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:id="@+id/datetest"
-        android:layout_below="@id/CGVButton"
+        android:layout_below="@id/inputDate"
         android:text="test"
+        android:textSize="20sp"
         android:layout_centerHorizontal="true"
+        android:textAlignment="center"
         />
 
     <Button
@@ -37,14 +39,17 @@
         android:id="@+id/locationButton"
         />
 
-    <Button
+    <EditText
+        android:id="@+id/inputDate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/locationButton"
         android:layout_centerHorizontal="true"
-        android:text="CGV"
-        android:id="@+id/CGVButton"
-        />
+        android:layout_below="@id/locationButton"
+        android:hint="날짜 YYYYMMDD"
+        android:inputType="number"
+        android:digits="0123456789"
+        android:textSize="15sp" />
+
 
     <ProgressBar
         android:layout_width="wrap_content"
@@ -60,7 +65,8 @@
         android:layout_centerHorizontal="true"
         android:layout_below="@id/title"
         android:layout_marginTop="500dp"
-        android:text = "인트아이 2팀"
+        android:text = "인트아이 2팀\n권동현 서예찬 이주영 전수현"
+        android:textAlignment="center"
         android:textSize="10sp"
         android:id="@+id/footer"
         />
