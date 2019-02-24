@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:text="인트아이 영화 상영시간 알림이"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="70dp"
+        android:layout_marginTop="40dp"
         android:textSize="30sp"
         android:id="@+id/title"
         />
@@ -24,7 +24,6 @@
         android:layout_height="wrap_content"
         android:id="@+id/datetest"
         android:layout_below="@id/inputDate"
-        android:text="test"
         android:textSize="20sp"
         android:layout_centerHorizontal="true"
         android:textAlignment="center"
@@ -48,6 +47,15 @@
         android:hint="날짜 YYYYMMDD"
         android:inputType="number"
         android:digits="0123456789"
+        android:textSize="15sp" />
+
+    <EditText
+        android:id="@+id/search"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"
+        android:layout_below="@id/datetest"
+        android:hint="검색어를 입력하세요"
         android:textSize="15sp" />
 
 
@@ -74,7 +82,7 @@
     <ListView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/datetest"
+        android:layout_below="@id/search"
         android:layout_marginBottom="75dp"
         android:id="@+id/movies"
         />

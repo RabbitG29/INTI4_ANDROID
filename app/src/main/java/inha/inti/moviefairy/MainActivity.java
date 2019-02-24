@@ -12,6 +12,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
@@ -43,6 +45,7 @@ public class MainActivity extends AppCompatActivity {
     ListView listview;
     String inDate;
     EditText inputDate;
+    EditText search;
     private long lastTimeBackPressed;
     Context mcontext = this;
     final String url = "http://172.20.10.6:8080/theaters";
@@ -72,6 +75,7 @@ public class MainActivity extends AppCompatActivity {
     ArrayAdapter adapter;
 
     static final List<String> myList = new LinkedList<>();
+    static final List<String> myList2 = new LinkedList<>();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -79,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
         /*----Button 정의-----*/
         Button locationButton= (Button) findViewById(R.id.locationButton);
         inputDate = (EditText)findViewById(R.id.inputDate);
+        search = (EditText)findViewById(R.id.search);
         callPermission(); // GPS Permission 질의
         adapter = new ArrayAdapter(this, android.R.layout.simple_list_item_1, myList) ;
         progress = (ProgressBar) findViewById(R.id.progressBar);
@@ -89,6 +94,25 @@ public class MainActivity extends AppCompatActivity {
         progress.setVisibility(View.INVISIBLE); // Progress bar가 일단 안보이게
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+        // input창에 검색어를 입력시 "addTextChangedListener" 이벤트 리스너를 정의한다.
+        search.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+            }
+
+            @Override
+            public void afterTextChanged(Editable editable) {
+                // input창에 문자를 입력할때마다 호출된다.
+                // search 메소드를 호출한다.
+                String text = search.getText().toString();
+                search(text);
+            }
+        });
         /*---위치 조회 눌렀을 경우 위경도 GPS로 받아오고 주소로 변환하기---*/
         locationButton.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v) {
@@ -96,12 +120,13 @@ public class MainActivity extends AppCompatActivity {
                 double longitude;
                 String inDate;
                 if(inputDate.getText().toString().equals("") || inputDate.length() != 8){
-                    Toast.makeText(MainActivity.this, "다시 입력해 주세요.", Toast.LENGTH_LONG).show();
-                    return;
+                    Toast.makeText(MainActivity.this, "잘못 입력하여 오늘 날짜로 설정됩니다.", Toast.LENGTH_LONG).show();
+                    inDate = getTime();
                 } else {
                     inDate = inputDate.getText().toString();
                 }
                 progress.setVisibility(View.VISIBLE);
+                myList2.clear();
                 adapter.clear();
                 String location="";
                 // 권한 요청을 해야 함
@@ -289,7 +314,7 @@ public class MainActivity extends AppCompatActivity {
                                     for(int l=0;l<jsonArray4.length();l++) {
                                         try {
                                             movies5 = jsonArray4.getJSONObject(l); // 마지막
-                                            adapter.add(temp+" <"+temp2+"> "+" "+temp3+"\n시작시간 : "+movies5.getString("startTime")
+                                            myList.add(temp+" <"+temp2+"> "+" "+temp3+"\n시작시간 : "+movies5.getString("startTime")
                                                     +"\n종료시간 : "+movies5.getString("endTime")+"\n여석 : "+movies5.getString("available") +"\n극장 코드 : "+code);
                                             } catch(JSONException e) {
                                         }
@@ -299,7 +324,8 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 }
-                //adapter.addAll(myList);
+                adapter.addAll(myList);
+                myList2.addAll(myList);
                 listview.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                     @Override
                     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -344,5 +370,31 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         return nowAddress;
+    }
+    /*---검색하기---*/
+    public void search(String charText) {
+        //Log.e("list",myList2.toString());
+        // 문자 입력시마다 리스트를 지우고 새로 뿌려준다.
+        adapter.clear();
+        // 문자 입력이 없을때는 모든 데이터를 보여준다.
+        if (charText.length() == 0) {
+            adapter.addAll(myList2);
+        }
+        // 문자 입력을 할때..
+        else
+        {
+            // 리스트의 모든 데이터를 검색한다.
+            for(int i = 0;i < myList2.size(); i++)
+            {
+                // arraylist의 모든 데이터에 입력받은 단어(charText)가 포함되어 있으면 true를 반환한다.
+                if (myList2.get(i).toLowerCase().contains(charText))
+                {
+                    // 검색된 데이터를 리스트에 추가한다.
+                    adapter.add(myList2.get(i));
+                }
+            }
+        }
+        // 리스트 데이터가 변경되었으므로 아답터를 갱신하여 검색된 데이터를 화면에 보여준다.
+        adapter.notifyDataSetChanged();
     }
 }
