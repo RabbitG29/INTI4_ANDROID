@@ -19,11 +19,13 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -68,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
         locationButton.setOnClickListener(new View.OnClickListener(){
             public void onClick(View v) {
                 progress.setVisibility(View.VISIBLE);
+                adapter.clear();
                 String location="";
                 // 권한 요청을 해야 함
                 if (!isPermission) {
@@ -185,15 +188,113 @@ public class MainActivity extends AppCompatActivity {
             super.onPostExecute(result);
             Toast.makeText(mcontext, "정상적으로 통신이 완료되었습니다.", Toast.LENGTH_SHORT).show();
             progress.setVisibility(View.INVISIBLE);
+            JSONArray jsonArray = new JSONArray();
+            JSONArray jsonArray2 = new JSONArray();
+            JSONArray jsonArray3 = new JSONArray();
+            JSONArray jsonArray4 = new JSONArray();
+            JSONObject movies = new JSONObject();
+            JSONObject movies2 = new JSONObject();
+            JSONObject movies3 = new JSONObject();
+            JSONObject movies4 = new JSONObject();
+            JSONObject movies5 = new JSONObject();
             try {
+               jsonArray = result.getJSONArray("result"); // 전체 JSONArray 가져오기
+            }catch (JSONException e) {
+
+            }
+            for(int i = 0 ; i<jsonArray.length(); i++){
+                try {
+                    movies = jsonArray.getJSONObject(i); // 영화관별로 가져오기
+                    //myList.add(movies.toString());
+                    Log.e("movies", movies.toString());
+                } catch (JSONException e) {
+
+                }
+                Iterator ii = movies.keys();
+                while (ii.hasNext()) {
+                    String temp = ii.next().toString();
+                    Log.e("iter", temp); // 영화관명
+                    try {
+                        movies2 = movies.getJSONObject(temp); //영화관별 JSONObject
+                        Log.e("movies2", movies2.toString());
+                    } catch (JSONException e) {
+
+                    }
+                    try {
+                        jsonArray2 = movies2.getJSONArray("timetable");
+                    }catch (JSONException e) {
+
+                    }
+                    Log.e("movies3", jsonArray2.toString()); // 영화관별 JSONArray
+                    for(int j=0;j<jsonArray2.length(); j++) {
+                        try {
+                            movies3 = jsonArray2.getJSONObject(j); // 영화관별 JSONObject
+                        } catch(JSONException e) {
+
+                        }
+                        Iterator iii = movies3.keys();
+                        while(iii.hasNext()) {
+                            String temp2 = iii.next().toString(); // 영화명
+                            try {
+                                jsonArray3 = movies3.getJSONArray(temp2); // 영화별 JSONArray
+                            } catch(JSONException e) {
+
+                            }
+                            //myList.add(temp+" "+temp2+" "+jsonArray3.toString());
+                            for(int k=0;k<jsonArray3.length();k++) {
+                                try {
+                                    movies4 = jsonArray3.getJSONObject(k); // 관별 Object
+                                }catch (JSONException e) {
+
+                                }
+                                Iterator iiii = movies4.keys();
+                                while(iiii.hasNext()) {
+                                    String temp3 = iiii.next().toString(); // 관명
+                                    try {
+                                        jsonArray4 = movies4.getJSONArray(temp3); // 관별 Array
+                                    }catch(JSONException e) {
+
+                                    }
+                                    for(int l=0;l<jsonArray4.length();l++) {
+                                        try {
+                                            movies5 = jsonArray4.getJSONObject(l); // 마지막
+                                            myList.add(temp+" "+temp2+" "+" "+temp3+"\n시작시간 : "+movies5.getString("startTime")
+                                                    +"\n종료시간 : "+movies5.getString("endTime")+"\n여석 : "+movies5.getString("available"));
+                                        } catch(JSONException e) {
+
+                                        }
+
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+            /*try {
+                Iterator i = result.keys();
+                while(i.hasNext()) {
+                    String temp = i.next().toString();
+                    myList.add(temp);
+                    try {
+                        Log.e("json",temp);
+                        JSONArray jj = result.getJSONArray(temp);
+                        Iterator i2 = jj.;
+                        while(i2.hasNext()) {
+                            String temp2 = i.next().toString();
+                            myList.add(temp2);
+                            Log.e("json",temp2);
+                        }
+                    }catch(JSONException e) {
+
+                    }
+                }*/
                 //text = "영화관 : "+result.getString("name") + "\n 코드 : " + result.getString("code") + "\n 영화제목 : " + result.getString("movie")
                        // + "\n 상영관 : " + result.getString("theater") + "\n 시작시간 : " + result.getString("starttime") + "\n 종료시간 : " + result.getString("endtime");
                 //datetest.setText(result.toString());
-                myList.add(result.toString());
-                myList.add(result.keys().toString());
+                //myList.add(result.toString());
+                //adapter.clear();
                 adapter.addAll(myList);
-            } catch(NullPointerException e) {
-                Toast.makeText(mcontext, "NULL입니다.", Toast.LENGTH_SHORT).show();
             }
         }
     }
